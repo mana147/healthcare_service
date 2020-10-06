@@ -2,6 +2,7 @@ import websockets
 from websockets import WebSocketServerProtocol
 import asyncio
 
+
 # ======================================================
 
 class WSC_Server:
@@ -14,8 +15,11 @@ class WSC_Server:
         self._wake_up_task = None
         self.ip = ip
         self.port = port
-        self.mess = []
+        self.mess =''
         self.full_client = 3
+        self.list_clinets_provider = []
+        self.authen: object
+        self.status_check = True
 
     # ======================================================
 
@@ -23,8 +27,9 @@ class WSC_Server:
         print("listening on {}:{}".format(self.ip, self.port))
         
         ws_server = websockets.serve(self.connect_client, self.ip, self.port)
+        # self.loop.run_until_complete(ws_server)
 
-        self.loop.run_until_complete(ws_server)
+        asyncio.ensure_future(ws_server)
 
         # self._wake_up_task = asyncio.ensure_future(test())
 
@@ -37,68 +42,107 @@ class WSC_Server:
     # ======================================================
     
     async def connect_client(self, client: WebSocketServerProtocol, path):
+        self.status_check = True
+        
         self.clients.add(client)
         self.list_clinets.append(client.remote_address)
 
         print('new client connected from {}:{}'.format(*client.remote_address))
-        print(self.list_clinets)
-        print(len(self.list_clinets))
+        # print(self.list_clinets)
+        print('số lượng client kết nối : {} \nlist client đang kết nối : {} '.format (len(self.list_clinets) , self.list_clinets ) )
 
+        # check full client
         if len(self.list_clinets) > self.full_client:
-            print ('full client')
+            print ('full client ')
             await self.disconnect_client(client)
-
         else:
-            keep_alive_task = asyncio.ensure_future(self.keep_alive(client))
-            asyncio.ensure_future(self.handle_authen(client))
+            # keep_alive_task = asyncio.ensure_future(self.keep_alive(client))
+            authen =  asyncio.ensure_future(self.send_authen_check(client))
+            # asyncio.ensure_future(self.authen_check(client))
+            asyncio.ensure_future(self.handle_provider(client))
+            asyncio.ensure_future(self.controll_handle(client))      
+                
             try:
-                await self.handle_messages(client)
-            except websockets.ConnectionClosed:
-                keep_alive_task.cancel()
+                await asyncio.ensure_future(self.handle_messages_input(client, authen))
+            except :
+                # keep_alive_task.cancel()
                 await self.disconnect_client(client)
+            finally:
+                print('> disconnect_client ')
+        
 
     # ======================================================
-    
-    async def handle_messages(self, client):
-        while True:
-            self.mess = await client.recv()
+    # ====================================================== 
+
+    async def handle_messages_input(self, client, authen):
+        async for mess in client:
+            # self.mess = mess 
+            print('client {} messages :  {}'.format(client.remote_address, mess))
+
+            # await self.authen_check(client, mess, authen)
+
+            if self.status_check == True:
+                await self.authen_check(client, mess, authen)
+
+
+        # while True:
+        #     self.mess = await client.recv()
 
             # print('recieved message from {}:{}: {}'.format(
             #     *client.remote_address, self.mess))
 
-            # await asyncio.wait([client.send(self.mess) for client in self.clients]
-     
+            # await asyncio.wait([client.send(self.mess) for client in self.clients]            
     # ======================================================
+    async def send_authen_check(self, client):
+        check_pass = 'pass id ? '
+        for x in range(5):
+            await asyncio.sleep(1)
+            await client.send(check_pass)
 
-    
-            
+        await client.send('fail')
+        await self.disconnect_client(client)
+
     # ======================================================
-    async def handle_authen(self, client):
-        # 
+    #  check messages == pass
+    #  str = gửi pass :
+    #  sau 3 lần gửi  : nếu không có gửi trời lại thì đóng kết nối
+    # còn nếu có pass : check messages ,
+    #  nếu sai : đóng kết nối  và gửi clone connect
+    # nếu đúng : ghi id vào provider
 
+    async def authen_check(self, client, mess, authen):
+        if mess == 'Itc@12345':
+            print('pass')
+            await client.send('pass')
+            self.status_check = False 
+            authen.cancel()
+
+            self.list_clinets_provider.append(client.remote_address)
+        else:
+            print('fail')
+            await client.send('fail')
+            try:
+                await client.close()
+            except:
+                print('client {} disconnected'.format(client.remote_address))
+        
+    # ======================================================
+    # client pulls data 
+    # ghi data vao trong database
+
+    async def handle_provider(self, client ):
         while True:
-            await asyncio.sleep(0.00000000001)
-            if len(self.mess) > 0:
-                print('mes : {}'.format(self.mess))
-                print('len : {}'.format(len(self.mess)))
-
-                await client.send(self.mess)
-
-                self.mess = ''
-
-            # await asyncio.sleep(self._client_timeout)
-
-            # print('mes : {}'.format(self.mess))
-            # 
-            # self.mess = ''
- 
+            await asyncio.sleep(3)
 
     # ======================================================
 
     async def disconnect_client(self, client):
         self.clients.remove(client)
         self.list_clinets.remove(client.remote_address)
-        print('client {}:{} disconnected'.format(*client.remote_address))
+        # self.list_clinets_provider.remove()
+
+        print('client {} disconnected'.format(client.remote_address))
+
         await client.close()
     
     # ======================================================
@@ -108,7 +152,7 @@ class WSC_Server:
             n = n + self._client_timeout
             await asyncio.sleep(self._client_timeout)
             try:
-                print('pinging {}:{}'.format( *client.remote_address))
+                # print('pinging {}:{}'.format( *client.remote_address))
                 await asyncio.wait_for(client.ping(), self._client_timeout)
                 await client.send(str(n))
 
@@ -125,6 +169,9 @@ class WSC_Server:
         except asyncio.CancelledError:
             self.loop.close()
 
+     # ===================================================
+    async def controll_handle(self, client):
+        print('controll handle')
      # ===================================================
 
 # ======================================================

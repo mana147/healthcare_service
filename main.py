@@ -1,5 +1,5 @@
 from scripts.websocket_server import WSC_Server
-import scripts.mysql_server as s_mysql
+# import scripts.mysql_server as s_mysql
 
 # ===================================================
 # khởi tạo server
