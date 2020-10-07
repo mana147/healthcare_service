@@ -1,42 +1,39 @@
 import mysql.connector
 import json
 
+mydb = mysql.connector.connect(
+    host="localhost",
+    user="root",
+    password="",
+    database="iot_database"
+)
 
-class Handle_Mysql:
-    def __init__(self, host, user, password, database):
-        self.host = host
-        self.user = user
-        self.password = password
-        self.database = database
+mycursor = mydb.cursor()
 
-    def mydb(self):
-        return mysql.connector.connect( self.host, self.user, self.password, self.database)
-
-
-    def Select_table(self,  table_name):
-        sql = "SELECT * FROM `" + table_name + "`"
-        return sql
+def Select_table(table_name):
+    sql = "SELECT * FROM `" + table_name + "`"
+    return sql
 
 
-# ===========================================
-# if __name__ == "__main__":
-#     mycursor = mydb.cursor()
-#     mycursor.execute(Select_table('users'))
-#     myresult = mycursor.fetchall()
+def Select_id(table_name, column_name, value):
+    list_column = 'id,active,id_userhw,name,number,email,level,user_enable'
+    
+    sql =   'SELECT ' + list_column + \
+            ' FROM ' + table_name + \
+            ' WHERE ' + column_name + ' LIKE ' + '"'+value+'"'
 
-#     f = open("data.txt", "w+")
+    return sql
 
-#     print(myresult[:])
-
-#     for x in myresult:
-#         # print( x )
-#         f.write(str(x) + '\n')
-
-#     f.close()
-
-#     b = myresult[0][10]
-#     # print(b)
-#     obj = json.loads(b)
-#     print(obj['list'][0])
 
 # ===========================================
+if __name__ == "__main__":
+
+    # thực thi lệnh sql
+    mycursor.execute(Select_table('users'))
+    # mycursor.execute(Select_id('users', 'id_userhw', 'us01hw01'))
+    # lấy tất cả sau khi thực thi
+    value = mycursor.fetchall()
+
+    print(value)
+    
+    # if mycursor.fetchall() == 
