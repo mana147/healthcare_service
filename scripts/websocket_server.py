@@ -7,18 +7,8 @@ import mysql.connector
 import json
 import bcrypt
 
-
-if True:  # Include project path
-    import sys
-    import os
-    ROOT = os.path.dirname(os.path.abspath(__file__))+"/../"
-    CURR_PATH = os.path.dirname(os.path.abspath(__file__))+"/"
-    # sys.path.append(ROOT)
-
-    print(ROOT)
-    print(CURR_PATH)
-
-# ======================================================
+import datetime
+import input.api_server as api
 
 class WSC_Server:
 
@@ -38,16 +28,7 @@ class WSC_Server:
 
         self.dict_id_index_client = {}
         # ================================================
-        self.check_True = '{"authen":"true"}'
-        self.check_False = '{"authen":"false"}'
-        self.check_Pass = '{"authen":"pass"}'
-        self.check_Disconnect = '{"authen":"disconnect"}'
-        self.check_Close = '{"authen":"close"}'
-        self.check_Request_ID_PASSW = '{"authen":"request_pass"}'
 
-        self.check_message_type = {
-            "type": "request"
-        }
 
         # =================================================
 
@@ -114,14 +95,14 @@ class WSC_Server:
 
     async def handle_messages_input(self, client, authen ):
         async for mess in client:
-            print('client {} messages :  {}'.format(client.remote_address, mess))
+            # print('client {} messages :  {}'.format(client.remote_address, mess))
             # await self.authen_check(client, mess, authen)
             # print(self.status_check)
             
             if self.status_check == True:
                 await self.authen_check(client, mess, authen)
             else:
-                await self.handle_provider(client, mess)
+                await self.handle_provide(client, mess)
 
 
         # while True:
@@ -149,11 +130,11 @@ class WSC_Server:
                 # sleep 1 s
                 await asyncio.sleep(1)
                 # gửi json request
-                await client.send(self.check_Request_ID_PASSW)
+                await client.send(api.api_request_id)
                 # print(x)
         
             # sau 5 lần request
-            await client.send(self.check_False)
+            await client.send(api.api_request_close)
             # disconnect_client
             await self.disconnect_client(client)
 
@@ -171,17 +152,19 @@ class WSC_Server:
     async def authen_check(self, client, mess, authen):
         
         # handle json 
+
         try:
             # chuyen mess sang dang json
             messJson = json.loads(mess)
-            id_userhw_json = messJson["id_userhw"]
-            password_json = messJson["password"]
+            
+            id_userhw_json = messJson['data']['id']
+            password_json = messJson['data']['password']
+
             # print('id = {}  \npassw = {}'.format(id_userhw_json, password_json))
 
         except:
-            await client.send(self.check_False)
+            await client.send(api.api_request_close)
             await self.disconnect_client(client)
-            print("> Not json")
 
 
         # ============================================= 
@@ -207,7 +190,7 @@ class WSC_Server:
         try:
             if len(data) != 0 and bcrypt.checkpw(bytes(password_json, 'utf-8'), bytes(password_of_userhw, 'utf-8')) and status_of_userhw == 'offline':
             # if len(data) != 0 and bcrypt.checkpw(bytes(password_json, 'utf-8'), bytes(password_of_userhw, 'utf-8')) :
-                await client.send(self.check_Pass)
+                await client.send(api.api_request_pass)
                 # stop status_check 
                 self.status_check = False
                 authen.cancel()
@@ -235,8 +218,7 @@ class WSC_Server:
                 self.list_clinets_provider.append(client.remote_address)
                 # ======================================================
             else:
-                print(self.check_False)
-                await client.send(self.check_False)
+                await client.send(api.api_request_close)
                 await self.disconnect_client(client)
 
         except:
@@ -246,13 +228,17 @@ class WSC_Server:
     # client pulls data 
     # ghi data vao trong database
 
-    async def handle_provider(self, client, mess):
-        await client.send('handle provider send : {}'.format(mess))
-        print('handle_provider_dicts = {} '.format(self.dict_id_index_client))
-        
+    async def handle_provide(self, client, mess):
+        try:
+            # chuyen mess sang dang json
+            messJson = json.loads(mess)
+            # print('id = {}  \npassw = {}'.format(id_userhw_json, password_json))
+        except:
+            await client.send(api.api_request_close)
+            await self.disconnect_client(client)
+            print("> Not json")
 
-        
-
+        # await client.send(api.api_time)
     # ======================================================
 
     async def disconnect_client(self, client):
