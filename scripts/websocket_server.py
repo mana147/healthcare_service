@@ -8,7 +8,7 @@ import json
 import bcrypt
 
 import datetime
-import input.api_server as api
+import input.api_server as API
 
 class WSC_Server:
 
@@ -130,11 +130,11 @@ class WSC_Server:
                 # sleep 1 s
                 await asyncio.sleep(1)
                 # gửi json request
-                await client.send(api.api_request_id)
+                await client.send(API.api_request_id)
                 # print(x)
         
             # sau 5 lần request
-            await client.send(api.api_request_close)
+            await client.send(API.api_request_close)
             # disconnect_client
             await self.disconnect_client(client)
 
@@ -156,14 +156,14 @@ class WSC_Server:
         try:
             # chuyen mess sang dang json
             messJson = json.loads(mess)
-            
-            id_userhw_json = messJson['data']['id']
-            password_json = messJson['data']['password']
+            if messJson['state'] == 'authen':
+                id_userhw_json = messJson['data']['id']
+                password_json = messJson['data']['password']
 
             # print('id = {}  \npassw = {}'.format(id_userhw_json, password_json))
 
         except:
-            await client.send(api.api_request_close)
+            await client.send(API.api_request_close)
             await self.disconnect_client(client)
 
 
@@ -190,7 +190,7 @@ class WSC_Server:
         try:
             if len(data) != 0 and bcrypt.checkpw(bytes(password_json, 'utf-8'), bytes(password_of_userhw, 'utf-8')) and status_of_userhw == 'offline':
             # if len(data) != 0 and bcrypt.checkpw(bytes(password_json, 'utf-8'), bytes(password_of_userhw, 'utf-8')) :
-                await client.send(api.api_request_pass)
+                await client.send(API.api_request_pass)
                 # stop status_check 
                 self.status_check = False
                 authen.cancel()
@@ -218,7 +218,7 @@ class WSC_Server:
                 self.list_clinets_provider.append(client.remote_address)
                 # ======================================================
             else:
-                await client.send(api.api_request_close)
+                await client.send(API.api_request_close)
                 await self.disconnect_client(client)
 
         except:
@@ -232,11 +232,24 @@ class WSC_Server:
         try:
             # chuyen mess sang dang json
             messJson = json.loads(mess)
-            # print('id = {}  \npassw = {}'.format(id_userhw_json, password_json))
+            
+            if messJson['state'] == 'provide':
+
+                if messJson['value'] == 'time':
+                    x = datetime.datetime.now()
+                    s = API.api_response_time(x.year, x.month, x.day, x.hour, x.minute, x.second)
+                    await client.send(str(s))
+                
+                if messJson['value'] == 'sensor':
+                    print(messJson['data'])
+                    
+                if messJson['value'] == 'images':
+                    pass
+                
+                
         except:
-            await client.send(api.api_request_close)
+            await client.send(API.api_request_close)
             await self.disconnect_client(client)
-            print("> Not json")
 
         # await client.send(api.api_time)
     # ======================================================
