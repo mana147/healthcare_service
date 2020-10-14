@@ -9,17 +9,26 @@ def api_response_time(year, month, day, hour, minute, second ):
     json = {
         "state": "provide",
         "type": "response",
-        "value": "time",
+        "value": "push_time",
         "data": {
             "time": [hour, minute, second],
             "date": [day, month, year]
             }
     }
+
     return json
 
 
-# def api_response_sensor(json):
-
-
-
-
+def api_response_sensor(heartbeat, oxygen, bloodpressure, bodytemperature):
+    json = {
+        "state": "provide",
+        "type": "response",
+        "value": "push_sensor",
+        "data": {
+            "Heartbeat": heartbeat,
+            "oxygen": oxygen,
+            "bloodpressure": bloodpressure,
+            "bodytemperature": bodytemperature
+        }
+    }
+    return json
